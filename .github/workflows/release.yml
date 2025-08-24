@@ -6,10 +6,6 @@ on:
       - 'v*' # Se ejecuta cuando hagas push de un tag tipo v1.0.0
   workflow_dispatch: # Permite lanzarlo manualmente desde GitHub Actions
 
-# Este workflow se ejecuta al publicar un tag de versión (vX.X.X).
-# Compila tu app con Tauri y publica un Release en GitHub
-# con los instaladores firmados y el archivo latest.json.
-
 jobs:
   publicar-tauri:
     permissions:
@@ -49,8 +45,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
+      - name: 📦 Instalar pnpm
+        run: npm install -g pnpm
+
       - name: 📦 Instalar dependencias del frontend
-        run: yarn install # Cambia a npm, pnpm o bun según tu proyecto
+        run: pnpm install
 
       - name: 🚀 Construir y publicar app Tauri
         uses: tauri-apps/tauri-action@v0
