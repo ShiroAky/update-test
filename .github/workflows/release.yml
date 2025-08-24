@@ -9,18 +9,18 @@ on:
 jobs:
   publicar-tauri:
     permissions:
-      contents: write # Permiso para crear y modificar Releases
+      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # Macs con procesador Apple Silicon (M1+)
+          - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # Macs con procesador Intel
+          - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04' # Linux
+          - platform: 'ubuntu-22.04'
             args: ''
-          - platform: 'windows-latest' # Windows
+          - platform: 'windows-latest'
             args: ''
 
     runs-on: ${{ matrix.platform }}
@@ -39,17 +39,30 @@ jobs:
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: 🐧 Instalar dependencias del sistema (solo Ubuntu)
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: 🐧 Instalar dependencias del sistema
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf imagemagick
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install imagemagick || true
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            choco install imagemagick -y
+          fi
 
       - name: 📦 Instalar pnpm
         run: npm install -g pnpm
 
       - name: 📦 Instalar dependencias del frontend
         run: pnpm install
+
+      # - name: 🔄 Convertir iconos a RGBA (cross-platform)
+      #   run: |
+      #     if [ -d "src-tauri/icons" ]; then
+      #       for f in src-tauri/icons/*.png; do
+      #         magick convert "$f" -define png:color-type=6 "$f"
+      #       done
+      #     fi
 
       - name: 🚀 Construir y publicar app Tauri
         uses: tauri-apps/tauri-action@v0
