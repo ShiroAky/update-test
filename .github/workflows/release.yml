@@ -4,12 +4,17 @@ on:
   push:
     tags:
       - 'v*' # Se ejecuta cuando hagas push de un tag tipo v1.0.0
-  workflow_dispatch: # Permite lanzarlo manualmente desde GitHub Actions
+  workflow_dispatch: # Permite lanzarlo manualmente
+
+permissions:
+  contents: write    # Permiso global para escribir contenido (subir artefactos, crear releases)
+  packages: write    # Si necesitas publicar paquetes
+  issues: read       # Si necesitas leer issues
+  pull-requests: read
 
 jobs:
   publicar-tauri:
-    permissions:
-      contents: write
+    runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
@@ -22,8 +27,6 @@ jobs:
             args: ''
           - platform: 'windows-latest'
             args: ''
-
-    runs-on: ${{ matrix.platform }}
 
     steps:
       - name: 📥 Descargar el código
@@ -39,28 +42,48 @@ jobs:
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: 🐧 Instalar dependencias del sistema
+      # 🔹 Dependencias Linux
+      - name: 🐧 Instalar dependencias del sistema (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf imagemagick
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install imagemagick || true
-          elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            choco install imagemagick -y
-          fi
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            imagemagick
+
+      # 🔹 Dependencias macOS
+      - name: 🍎 Instalar dependencias del sistema (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: brew install imagemagick || true
+
+      # 🔹 Dependencias Windows
+      - name: 🪟 Instalar dependencias del sistema (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install imagemagick -y
 
       - name: 📦 Instalar pnpm
-        run: npm install -g pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: 📦 Instalar dependencias del frontend
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      # - name: 🔄 Convertir iconos a RGBA (cross-platform)
+      # 🔹 (Opcional) Convertir iconos a RGBA
+      # - name: 🔄 Convertir iconos a RGBA
+      #   if: runner.os != 'Windows'
+      #   shell: bash
       #   run: |
       #     if [ -d "src-tauri/icons" ]; then
       #       for f in src-tauri/icons/*.png; do
-      #         magick convert "$f" -define png:color-type=6 "$f"
+      #         magick "$f" -define png:color-type=6 "$f"
       #       done
       #     fi
 
